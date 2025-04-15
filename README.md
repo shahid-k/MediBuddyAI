@@ -1,10 +1,8 @@
 # Triage HealthCare Assistant
 
-This repository contains the code to run an AI-powered assistant to provide medical advice, answer patient queries, and triage symptoms, enhancing patient engagement and care.
+This repository contains the code to run an AI-powered assistant to provide triage assistance, and enhance patient engagement and care experience.
 
 Problem statement domain: Healthcare
-
-Subdomain: HEL-4
 
 ## Preview
 
