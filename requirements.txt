@@ -1,0 +1,7 @@
+streamlit
+typing
+textblob
+groq
+dotenv
+xai-sdk
+python-dotenv
