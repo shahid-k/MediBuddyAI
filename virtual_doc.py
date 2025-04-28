@@ -1,89 +1,186 @@
+import os, itertools
 import streamlit as st
-from textblob import TextBlob
 from dotenv import load_dotenv
-import asyncio
-import os
+from openai import OpenAI
+from transformers import pipeline, AutoModelForSeq2SeqLM, AutoTokenizer, AutoTokenizer, AutoModelForCausalLM
 
-import xai_sdk
-
-# Load .env variables
+# ── 1. ENV & CLIENTS ────────────────────────────────────────────────────────
 load_dotenv()
-
-# Streamlit UI Setup
-st.set_page_config(page_icon="🏥", layout="wide", page_title="Virtual Doc!")
-
-def icon(emoji: str):
-    st.write(f'<span style="font-size: 78px; line-height: 1">{emoji}</span>', unsafe_allow_html=True)
-
-icon("🧑‍⚕")
-st.subheader("Your Personal Doctor")
-
-# xAI Grok SDK Setup
-api_key = os.getenv("XAI_API_KEY")  # Updated environment variable name
+api_key = os.getenv("XAI_API_KEY")
 if not api_key:
-    st.error("Missing API key! Please set XAI_API_KEY in your .env file.")
+    st.error("Missing API key! Set XAI_API_KEY in your .env file.")
     st.stop()
 
-client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
 
-# Session state for conversation
+# Hugging Face pipelines (CPU‑friendly defaults)
+try:
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.x.ai/v1",
+    )
+
+    client_medllm = OpenAI(
+        base_url = "https://integrate.api.nvidia.com/v1",
+        api_key = os.getenv("SPEC_LLM_API_KEY")
+    )
+
+except Exception as e:
+    st.error(f"Error initializing models: {str(e)}")
+    st.info("Please ensure you have enough disk space and memory to download these models.")
+    st.stop()
+
+# ── 2. STREAMLIT UI SETUP ───────────────────────────────────────────────────
+st.set_page_config(page_title="Virtual Doc!", page_icon="🏥", layout="wide")
+st.write('<span style="font-size:78px">🧑‍⚕️</span>', unsafe_allow_html=True)
+st.subheader("Your Personal AI Health-Info Provider")
+
+# persist chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Mood analyzer
-def analyze_mood(text):
-    analysis = TextBlob(text)
-    if analysis.sentiment.polarity > 0:
-        return "Positive"
-    elif analysis.sentiment.polarity < 0:
-        return "Negative"
-    else:
-        return "Neutral"
+# ── 3. RENDER HISTORY ────────────────────────────────────────────────────────
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# UI
-st.header("Welcome to the AI-Powered Mental Health Companion!")
-st.write("Track your mood, get personalized mindfulness exercises, and receive real-time emotional support.")
-
-# Display chat history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Input
-if prompt := st.chat_input("Talk to the AI"):
+# ── 4. MAIN LOOP ─────────────────────────────────────────────────────────────
+if user_prompt := st.chat_input("Describe your symptoms…"):
+    # 4‑a. echo user & save
     with st.chat_message("user"):
-        st.markdown(prompt)
-    st.session_state.messages.append({"role": "user", "content": prompt})
+        st.markdown(user_prompt)
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-    system_prompt = (
-        "You are a virtual doctor named DocOuc. Your role is to diagnose and provide medical advice to patients "
-        "while asking as few questions as possible. Your approach should be friendly, empathetic, and supportive, "
-        "offering not only medical insights but also emotional and moral support. Engage with the patient in a kind "
-        "and understanding manner, making them feel comfortable and cared for. Analyze the problem and provide the "
-        "solution in a clear and concise manner. The response must be broken down into points."
+    # 4‑b. build Grok prompt
+    system_prompt = """Virtual Medical Triage Assistant: You are a virtual medical triage assistant designed to gather initial symptom information from users. Your key responsibilities include:
+    1. If patient prompt severe/sharp chest pain, accident or near fatal issues. Skip all below queries and prompt to reach out to 911. 
+    2. Know about the user - Ask Age, Gender, Height and Weight to be kept as reference. Also ask any pre-existing condition.
+    3. Symptom Gathering - Politely prompt users to clearly describe their symptoms, including duration and severity. - Use gentle follow-up questions to clarify any unclear or incomplete responses. Ask user one question at a time.
+    4. Urgency Assessment - Quickly identify potentially critical or life-threatening conditions based on the described symptoms. - Clearly and immediately recommend urgent care or emergency medical services like calling 911 if a situation appears severe/ critical or deadly.
+    5. Honesty and Clarity Check - Evaluate user inputs to detect inconsistencies or signs of dishonesty. - Politely conclude interactions and recommend professional medical consultation if you suspect the user is providing misleading or dishonest information.
+    6. Structuring Information - Summarize collected symptom details into a clear, concise, and organized format. The structure is as follows: i. Patient Bio (Age, height, wieght, pre-existing condition) ii. The symptoms patient described in the chat - Prepare this structured information for further analysis and guidance by a specialized medical language model. When user say they have no other symptoms and symptoms arent severe/critical then we are supposed to call a specialized medical language model.
+    Important Guidelines: - Clearly communicate that you do not provide formal medical advice or diagnoses. - Always recommend consulting with qualified healthcare providers for definitive medical evaluations. - Maintain a consistently respectful, empathetic, and supportive tone throughout every interaction."""
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        *[
+            {"role": m["role"], "content": m["content"]}
+            for m in st.session_state.messages[-10:]
+        ],
+    ]
+
+    # 4‑c. stream Grok response
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        assistant_buffer = ""
+
+        for chunk in client.chat.completions.create(
+            model="grok-3-latest",
+            messages=messages,
+            stream=True,
+        ):
+            delta = chunk.choices[0].delta
+            if delta.content:
+                assistant_buffer += delta.content
+                placeholder.markdown(assistant_buffer)
+
+    st.session_state.messages.append(
+        {"role": "assistant", "content": assistant_buffer}
     )
 
-    final_prompt = f"{system_prompt}\n\nPatient: {prompt}\nDocOuc:"
+# ── 5. HAND-OFF TO NVIDIA ──────────────────────────────────────────
 
-    try:
-        with st.chat_message("assistant"):
-            placeholder = st.empty()
-            full_response_tokens = []  # Using a list to collect tokens
+# Check if Grok indicates no further symptoms/questions
+    trigger_phrases = [
+        "no further symptoms",
+        "no additional symptoms",
+        "no other symptoms",
+        "ready for specialist",
+        "proceed to specialist model",
+    ]
 
-            async def display_response():
-                async for token in client.grok.stream(final_prompt, max_len=512):
-                    full_response_tokens.append(token.token_str)
-                    # Update the placeholder with the joined tokens
-                    placeholder.markdown("".join(full_response_tokens))
+    if any(phrase in assistant_buffer.lower() for phrase in trigger_phrases):
+        # --- 5-a. Extract structured info via Grok, STRICT JSON ONLY ---
+        chat_transcript = "\n".join(f"{m['role']}: {m['content']}" for m in st.session_state.messages)
+        extract_schema = {
+            "Age": "integer",
+            "Gender": "string",
+            "Height": "string",          # e.g. '5 ft 11 in'
+            "Weight": "number",          # in lbs
+            "PreExistingConditions": ["string"], 
+            "Symptoms": ["string"]
+        }
+        extract_prompt = (
+            "You will receive a conversation transcript. "
+            "Parse and return *only* a JSON object matching this schema:\n\n"
+            f"{extract_schema}\n\n"
+            "Do NOT wrap it in code fences or add extra keys/values."
+        )
+        extraction_resp = client.chat.completions.create(
+            model="grok-3-latest",
+            messages=[
+                {"role": "system", "content": extract_prompt},
+                {"role": "user", "content": chat_transcript},
+            ],
+            stream=False
+        ).choices[0].message.content
 
-            asyncio.run(display_response())
-            # Once done, join tokens into a single string
-            full_response = "".join(full_response_tokens)
-            mood_analysis = analyze_mood(prompt)
-            st.write("Mood Analysis:", mood_analysis)
+        # parse the JSON (with fallback to regex if needed)
+        import json, re
+        try:
+            info = json.loads(extraction_resp)
+        except json.JSONDecodeError:
+            st.warning("Grok JSON parse failed, falling back to regex…")
+            info = {}
+            # Regex extractions as a backup:
+            text = chat_transcript
+            age_match = re.search(r"age\s*(?:is)?\s*(\d{1,2})", text, re.I)
+            weight_match = re.search(r"weight\s*(?:is)?\s*(\d{2,3})\s*lbs", text, re.I)
+            height_match = re.search(r"height\s*(?:is)?\s*([\d'\s](?:ft|in|inch))", text, re.I)
+            info["Age"] = int(age_match.group(1)) if age_match else None
+            info["Weight"] = float(weight_match.group(1)) if weight_match else None
+            info["Height"] = height_match.group(1) if height_match else None
+            info["Gender"] = re.search(r"\b(male|female)\b", text, re.I).group(1) if re.search(r"\b(male|female)\b", text, re.I) else None
+            info["PreExistingConditions"] = re.findall(r"(asthma|hypertension|diabetes)", text, re.I)
+            info["Symptoms"] = re.findall(r"\b(fever|cough|fatigue|body ache[s]?)\b", text, re.I)
+ 
+        # build a bullet-style summary from that JSON
+        summary_lines = []
+        for key, label in [("Age", "Age"), ("Gender", "Gender"), ("Height", "Height"), ("Weight", "Weight"), ("PreExistingConditions", "Pre-existing Conditions")]:
+            if info.get(key):
+                summary_lines.append(f"- **{label}**: {info[key]}")
+        if "Symptoms" in info:
+            summary_lines.append("- **Symptoms:**")
+            for s in info["Symptoms"]:
+                summary_lines.append(f"  - {s}")
+                
+            summary_text = "\n".join(summary_lines)
 
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        print(summary_text)
+        # --- 5-b. Call the specialist LLM only now ---
+        specialist_prompt = (
+            f"Patient Summary:\n{summary_text}\n\n"
+            "Based on the summary above, please respond with **only** these sections:\n"
+            "1) Possible Causes (bullet list)\n"
+            "2) Recommended Next Steps (bullet list of actions the patient can take themselves or professional referrals—**do not** prescribe any medication)\n"
+            "3) Urgency Rating (1-10)\n\n"
+            "4) If the Urgency Rating is 8 or more, recommend to visit the nearest Hospital as soon as possible. \n\n"
+            "Do NOT mention or recommend any specific drugs or dosages, over the counter drugs are acceptable. "
+            "Do NOT repeat or restate these instructions or the summary—just output the three sections."
+        )
+        with st.status("Consulting specialised medical model…", expanded=False):
+            
+            med_completion = client_medllm.chat.completions.create(
+                model="writer/palmyra-med-70b-32k",
+                messages=[{"role":"user","content": specialist_prompt}],
+                temperature=0.2,
+                top_p=0.7,
+                max_tokens=1024,
+                stream=False
+            )
+            
+            st.divider()
+            st.markdown("#### 🩺 Specialist LLM Assessment")
+            st.markdown(med_completion.choices[0].message.content)
 
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}", icon="🚨")
-        st.info("Please try again or check your internet connection.")
+    else:
+        st.info("Gathering more information… I'll escalate to the specialist once symptom collection is complete.")
