@@ -30,7 +30,7 @@ except Exception as e:
     st.stop()
 
 # ── 2. STREAMLIT UI SETUP ───────────────────────────────────────────────────
-st.set_page_config(page_title="Virtual Doc!", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="MediBuddy!", page_icon="🏥", layout="wide")
 st.write('<span style="font-size:78px">🧑‍⚕️</span>', unsafe_allow_html=True)
 st.subheader("Your Personal AI Health-Info Provider")
 
