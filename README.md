@@ -28,7 +28,7 @@ To get started with the project, follow these steps:
 1. Clone this repository to your local machine.
     ```bash
     git clone https://github.com/RiteshYennuwar/Virtual_HealthCare_Assistant.git
-    cd Virtual_HealthCare_Assistant
+    cd MediBuddyAI
 2. Install the required dependencies using 
     ```bash
     pip install -r requirements.txt
