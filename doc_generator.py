@@ -12,14 +12,14 @@ from reportlab.lib.units import inch
 from markdown import markdown
 from reportlab.lib import colors
 
-def convert_markdown_to_pdf(markdown_content, output_path, logo_url=None):
+def convert_markdown_to_pdf(markdown_content, output_path, session_id, logo_url=None):
     # 1) Convert markdown → HTML fragment
     html_body = markdown(markdown_content, output_format='html5')
     
     # 2) Build full HTML fragment
-    # session_html = f'<p><strong>Session ID:</strong> <code>{session_id}</code></p>'
+    session_html = f'<p><strong>Session ID:</strong> <code>{session_id}</code></p>'
     logo_html    = f'<img src="{logo_url}"/>' if logo_url else ''
-    fragment     = logo_html + html_body
+    fragment     = session_html + logo_html + html_body
 
     # 3) **Wrap** in <body> so soup.body exists
     full_html = f"<html><body>{fragment}</body></html>"

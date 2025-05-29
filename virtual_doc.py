@@ -205,7 +205,7 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
 
             # Create a reports directory in your project
             reports_dir = "./"
-            pdf_path = convert_markdown_to_pdf(formatted_output, reports_dir, os.getenv("LOGO_URL"))
+            pdf_path = convert_markdown_to_pdf(formatted_output, reports_dir, session_id, os.getenv("LOGO_URL"))
 
             # Add a download button for the PDF
             with open(pdf_path, "rb") as f:
