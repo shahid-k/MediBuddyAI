@@ -1,12 +1,13 @@
-# Triage HealthCare Assistant
+# Virtual HealthCare Assistant
 
-This repository contains the code to run an AI-powered assistant to provide triage assistance, and enhance patient engagement and care experience.
+This repository contains the code to run an AI-powered assistant to provide medical advice, answer patient queries, and triage symptoms, enhancing patient engagement and care.
 
-Problem statement domain: Healthcare
+Porblem statement domain: Healthcare
+
+Subdomain: HEL-4
 
 ## Preview
-
-<!-- <img src="static/preview.png" alt="app preview"> --> 
+<img src="static/preview.png" alt="app preview">
 
 ## Overview
 
