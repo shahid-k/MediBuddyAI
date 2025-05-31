@@ -3,6 +3,23 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 from transformers import pipeline, AutoModelForSeq2SeqLM, AutoTokenizer, AutoTokenizer, AutoModelForCausalLM
+import json, re
+from format import format_specialist_report
+import random, string
+from doc_generator import convert_markdown_to_pdf
+# from markdown import markdown
+# from weasyprint import HTML
+# from helper_function.md_pdf import save_markdown_pdf
+
+def generate_session_id(length=10):
+    base62_chars = string.ascii_letters + string.digits
+    return ''.join(random.choices(base62_chars, k=length))
+
+session_id = generate_session_id()
+st.session_state['session_id'] = session_id
+print("Current session ID:", session_id)
+
+
 
 # ── 1. ENV & CLIENTS ────────────────────────────────────────────────────────
 load_dotenv()
@@ -30,7 +47,7 @@ except Exception as e:
     st.stop()
 
 # ── 2. STREAMLIT UI SETUP ───────────────────────────────────────────────────
-st.set_page_config(page_title="MediBuddy!", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="Virtual Doc!", page_icon="🏥", layout="wide")
 st.write('<span style="font-size:78px">🧑‍⚕️</span>', unsafe_allow_html=True)
 st.subheader("Your Personal AI Health-Info Provider")
 
@@ -125,7 +142,6 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
         ).choices[0].message.content
 
         # parse the JSON (with fallback to regex if needed)
-        import json, re
         try:
             info = json.loads(extraction_resp)
         except json.JSONDecodeError:
@@ -162,8 +178,8 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
             "Based on the summary above, please respond with **only** these sections:\n"
             "1) Possible Causes (bullet list)\n"
             "2) Recommended Next Steps (bullet list of actions the patient can take themselves or professional referrals—**do not** prescribe any medication)\n"
-            "3) Urgency Rating (1-10)\n\n"
-            "4) If the Urgency Rating is 8 or more, recommend to visit the nearest Hospital as soon as possible. \n\n"
+            "3) Urgency Rating (1-5)\n\n"
+            "4) If the Urgency Rating is 4 or more, recommend to visit the nearest Hospital as soon as possible. \n\n"
             "Do NOT mention or recommend any specific drugs or dosages, over the counter drugs are acceptable. "
             "Do NOT repeat or restate these instructions or the summary—just output the three sections."
         )
@@ -177,10 +193,42 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
                 max_tokens=1024,
                 stream=False
             )
+            if 'session_id' not in st.session_state:
+                st.session_state['session_id'] = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+
+            session_id = st.session_state['session_id']
             
+            formatted_output = format_specialist_report(summary_text, med_completion.choices[0].message.content, session_id)
             st.divider()
             st.markdown("#### 🩺 Specialist LLM Assessment")
-            st.markdown(med_completion.choices[0].message.content)
+            st.markdown(formatted_output)
+
+            # Create a reports directory in your project
+            reports_dir = "./"
+            pdf_path = convert_markdown_to_pdf(formatted_output, reports_dir, session_id, os.getenv("LOGO_URL"))
+
+            # Add a download button for the PDF
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    label="📥 Download Medical Report (PDF)",
+                    data=f,
+                    file_name=f"medical_report_{session_id}.pdf",
+                    mime="application/pdf"
+                )
+                
+            # session_id = st.session_state['session_id']
+            # pdf_file_path = f"./{session_id}_assessment.pdf"
+
+            # save_markdown_pdf(pdf_file_path, formatted_output) 
+
+            # with open(pdf_file_path, "rb") as f:
+            #     st.download_button(
+            #         label="⬇️ Download your assessment PDF",
+            #         data=f,
+            #         file_name=pdf_file_path,
+            #         mime="application/pdf"
+            #     )
+
 
     else:
         st.info("Gathering more information… I'll escalate to the specialist once symptom collection is complete.")

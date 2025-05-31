@@ -11,3 +11,15 @@ torch>=2.0.0
 transformers>=4.30.0
 accelerate
 sacremoses
+textstat
+transformers
+rouge-score
+torch
+nltk
+bert-score
+evaluate
+absl-py
+markdown
+reportlab
+md2pdf
+bs4
