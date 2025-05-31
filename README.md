@@ -4,14 +4,12 @@ This repository contains the code to run an AI-powered assistant to provide medi
 
 Porblem statement domain: Healthcare
 
-Subdomain: HEL-4
-
 ## Preview
-<img src="static/preview.png" alt="app preview">
+Live: https://medibuddyai.streamlit.app/
 
 ## Overview
 
-The project focuses providing patients with medical advice, answer patient queries, and triage symptoms, enhancing patient engagement with care using a virtual assistant.
+The project focuses on providing patients with medical education, answering patient queries, and triaging symptoms, enhancing patient engagement with care using a virtual assistant.
 
 ## Project Structure
 
@@ -21,6 +19,11 @@ The project is structured as follows:
 - `Dockerfile`: Docker configuration for containerizing the application.
 - `requirements.txt`: File containing the necessary dependencies to run the project.
 
+## Tech Stacks
+- LLMs: xAI-Grok-3-latest and Nvidia Palmyra-med-32B models.
+- Platform: Streamlit.
+- Deployment: Containerized (Docker) and Streamlit Community Cloud.
+- Additional features: Voice interaction, PDF report generation, MCP Protocol.
 
 ## Getting Started
 
@@ -29,14 +32,14 @@ To get started with the project, follow these steps:
 1. Clone this repository to your local machine.
     ```bash
     git clone https://github.com/RiteshYennuwar/Virtual_HealthCare_Assistant.git
-    cd Virtual_HealthCare_Assistant
+    cd MediBuddyAI
 2. Install the required dependencies using 
     ```bash
     pip install -r requirements.txt
 
 ## Usage
 
-- **Application**:  To start the application and use the virtual assistant execute the following command:
+- **Application**:  To start the application and use the virtual assistant, execute the following command:
     ```bash
     streamlit run virtual_doc.py
 
