@@ -205,7 +205,7 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
             st.markdown(formatted_output)
 
             # Create a reports directory in your project
-            0 = "./"
+            reports_dir = "./"
             pdf_path = convert_markdown_to_pdf(formatted_output, reports_dir, session_id, os.getenv("LOGO_URL"))
             pdf_url = upload_pdf_to_s3(pdf_path, f"medical_report_{session_id}.pdf")
             store_session_in_dynamodb(session_id, formatted_output, pdf_url)
