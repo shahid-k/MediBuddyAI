@@ -23,5 +23,4 @@ markdown
 reportlab
 md2pdf
 bs4
-io
 boto3
