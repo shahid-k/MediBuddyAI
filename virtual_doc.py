@@ -7,9 +7,9 @@ import json, re
 from format import format_specialist_report
 import random, string
 from doc_generator import convert_markdown_to_pdf
-# from markdown import markdown
-# from weasyprint import HTML
-# from helper_function.md_pdf import save_markdown_pdf
+from helper_function.upload_to_s3 import upload_pdf_to_s3
+from helper_function.store_dynamo import store_session_in_dynamodb
+
 
 def generate_session_id(length=10):
     base62_chars = string.ascii_letters + string.digits
@@ -198,6 +198,7 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
 
             session_id = st.session_state['session_id']
             
+            
             formatted_output = format_specialist_report(summary_text, med_completion.choices[0].message.content, session_id)
             st.divider()
             st.markdown("#### 🩺 Specialist LLM Assessment")
@@ -206,6 +207,8 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
             # Create a reports directory in your project
             reports_dir = "./"
             pdf_path = convert_markdown_to_pdf(formatted_output, reports_dir, session_id, os.getenv("LOGO_URL"))
+            pdf_url = upload_pdf_to_s3(pdf_path, f"medical_report_{session_id}.pdf")
+            store_session_in_dynamodb(session_id, formatted_output, pdf_url)
 
             # Add a download button for the PDF
             with open(pdf_path, "rb") as f:
@@ -216,19 +219,6 @@ if user_prompt := st.chat_input("Describe your symptoms…"):
                     mime="application/pdf"
                 )
                 
-            # session_id = st.session_state['session_id']
-            # pdf_file_path = f"./{session_id}_assessment.pdf"
-
-            # save_markdown_pdf(pdf_file_path, formatted_output) 
-
-            # with open(pdf_file_path, "rb") as f:
-            #     st.download_button(
-            #         label="⬇️ Download your assessment PDF",
-            #         data=f,
-            #         file_name=pdf_file_path,
-            #         mime="application/pdf"
-            #     )
-
 
     else:
         st.info("Gathering more information… I'll escalate to the specialist once symptom collection is complete.")
