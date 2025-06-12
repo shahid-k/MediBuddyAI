@@ -29,7 +29,6 @@ if not api_key:
     st.stop()
 
 
-# Hugging Face pipelines (CPU‑friendly defaults)
 try:
     client = OpenAI(
         api_key=api_key,
@@ -47,11 +46,11 @@ except Exception as e:
     st.stop()
 
 # ── 2. STREAMLIT UI SETUP ───────────────────────────────────────────────────
-st.set_page_config(page_title="Virtual Doc!", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="MediBuddyAI!", page_icon="🏥", layout="wide")
 st.write('<span style="font-size:78px">🧑‍⚕️</span>', unsafe_allow_html=True)
 st.subheader("Your Personal AI Health-Info Provider")
 
-# persist chat
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
